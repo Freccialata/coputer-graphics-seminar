@@ -1,0 +1,173 @@
+<!DOCTYPE>
+<html>
+	<head>
+		<title>Computer Graphcis - Vertex and Fragment Shader - Shader Workshop Task 3 - Wobbly Sphere</title>
+		<script type="text/javascript" src="three.r133.js"></script>
+		<script type="text/javascript">
+			/**
+			 * This part is executed on the CPU: in your browser!
+			 * There are a lot of Three.js specific things here, ask me if you feel confused.
+			 */
+			var renderer, scene, camera; 	// First some global variables
+			var sphere;						// We will have one object, a sphere
+			
+			var vertexShader, fragmentShader; // These variables will hold the shader code, which will be sent to the GPU
+			
+			var lightPosition = new THREE.Vector3(2.0, 2.0, 0.0);	// Light source position is currently in the view space (relative to the camera) for simplicity
+			var viewerPosition = new THREE.Vector3(0.0, 0.0, 3.0);	// Viewer position in our right-handed world
+			
+			/**
+			 * Helper function for getting time. 
+			 * There are many ways to get the time...
+			 */
+			function millis() {
+
+				return performance.now();
+			}
+
+			/**
+			 * This function is executed once your webpage has been loaded
+			 */
+			function onLoad() { 
+				var canvasContainer = document.getElementById('myCanvasContainer'); // We get the element to render our 3D into
+				var width = 800; 
+				var height = 500;
+				
+				vertexShader = document.getElementById('vertexShader').textContent;		// We get our shader codes
+				fragmentShader = document.getElementById('fragmentShader').textContent;
+				
+				renderer = new THREE.WebGLRenderer(); 	// This is Three.js renderer
+				renderer.setSize(width, height);
+				canvasContainer.appendChild(renderer.domElement); // Adds a rendering viewport into our page
+				
+				scene = new THREE.Scene(); // Three.js has a scene, where our 3D objects are in
+				
+				//We will use a perspective camera, with FOV 80 degrees
+				camera = new THREE.PerspectiveCamera(80, width / height, 1, 1000); 
+				camera.position.set(viewerPosition.x, viewerPosition.y, viewerPosition.z);
+				camera.up = new THREE.Vector3(0, 1, 0);
+				camera.lookAt(new THREE.Vector3(0, 0, 0)); // Camera is looking at the center of the world
+				scene.add(camera);
+				
+				
+				sphere = createSphere();
+				scene.add(sphere);
+				
+				draw();
+				
+				window.addEventListener('keydown', function(event) { // When you press Space, you see the wireframe
+					if (event.keyCode == 32) { //Space
+						sphere.material.wireframe = !sphere.material.wireframe;
+					}
+				}, false);
+			}
+			
+			/**
+			 * This is our main rendering loop.
+			 */
+			function draw() {
+				requestAnimationFrame(draw);
+				
+				/**
+				 * -- Task --
+				 * Update the uniform values for the sphere:
+				 * - sphere.material.uniforms.time.value - make it milliseconds divided 1000, so it will be in seconds
+				 * - sphere.material.uniforms.distortionWeight.value - make it a sine wave to the 4th power, argument can be milliseconds divided by 10000
+				 *   in JavaScript there are functions Math.pow and Math.sin
+				 */
+				
+				renderer.render(scene, camera);
+			}
+			
+			/**
+			 * Every 3D mesh object consists of a geometry and a material.
+			 * Here we create a sphere and use a custom material (with our own shaders)
+			 */
+			function createSphere() {
+				var geometry = new THREE.SphereGeometry(1, 32, 32);
+				var material = createShaderMaterial();
+				var sphereMesh = new THREE.Mesh(geometry, material);
+				
+				return sphereMesh;
+			}
+			
+			/**
+			 * This creates a material, which uses our own shaders
+			 */
+			function createShaderMaterial() {
+			
+				return new THREE.ShaderMaterial({
+					uniforms: {
+						lightPosition: { 
+							value: lightPosition
+						},
+						time: { // Here are some new uniforms, update their values in the rendering loop
+							value: 0
+						},
+						distortionWeight:  {
+							value: 0
+						}
+					},
+					vertexShader: vertexShader,
+					fragmentShader: fragmentShader
+				});
+			}
+			
+		</script>
+		
+		<!-- 
+			Below are the shader codes for the vertex and fragment shaders.
+		-->
+		<script id="vertexShader" type="x-shader/x-vertex">
+			/**
+			 * -- Task --
+			 * Receive the time and distortionWeight uniforms
+			 */
+			varying vec3 interpolatedPosition;
+			varying vec3 interpolatedNormal;
+			
+			void main() {
+				interpolatedPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+				interpolatedNormal = normalize(normalMatrix * normal);
+				
+				/**
+				 * -- Task --
+				 * Create a new variable vec3 distortion, which holds the distortion amount in all axes
+				 * One way is: Have each coordinate oscillate via sine waves, where:
+				 * - The argument has a different multiple of time summed with
+				 * - a positional coordinate with different multiples
+				 * - Entire wave is divided by 10 (otherwise the distortion is too big)
+				 */
+				
+
+				/**
+				 * -- Task --
+				 * Find a vec3 distortedPosition, which has the weighted distortion added to the position
+				 * Use that new distortedPosition in the gl_Position calculation below
+				 */
+				 
+				
+				gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+			}
+		</script>
+		<script id="fragmentShader" type="x-shader/x-fragment">
+			varying vec3 interpolatedNormal;
+			varying vec3 interpolatedPosition;
+			uniform vec3 lightPosition;
+		
+			void main() {
+				vec3 n = normalize(interpolatedNormal);
+				vec3 l = normalize(lightPosition - interpolatedPosition);
+				
+				vec3 baseColor = vec3(1.0, 0.0, 0.0);
+				vec3 color = baseColor * (vec3(0.2) + max(0.0, dot(n, l)));
+				// You can also use the discretized colors here or anything else you like
+			
+				gl_FragColor = vec4(color, 1.0);
+			}
+		</script>
+	</head>
+	<body onload="onLoad()">
+		<div id="myCanvasContainer"></div>
+	</body>
+</html>
